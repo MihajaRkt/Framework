@@ -1,6 +1,7 @@
 package servlet;
 
 import annotation.Controller;
+import annotation.UrlMapping;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,43 +11,108 @@ import tools.Util;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class VueServlet extends HttpServlet {
 
-   private List<Class> listeControleurs = new ArrayList<>();
+   private List<Class<?>> listeClasses = new ArrayList<>();
+
+   private Map<String, Class<?>> mappingClasses = new HashMap<>();
+   private Map<String, Method> mappingMethodes = new HashMap<>();
 
    @Override
    public void init() throws ServletException {
+
       String cheminJar = getServletContext().getRealPath("/WEB-INF/lib/Sprint.jar");
       File fichierJar = new File(cheminJar);
 
-      List<Class> toutesLesClasses = new ArrayList<>();
       Util util = new Util();
 
+      List<Class<?>> toutesLesClasses = new ArrayList<>();
       util.scannerJar(fichierJar, toutesLesClasses);
-      this.listeControleurs = util.filtrerParAnnotation(toutesLesClasses, Controller.class);
+
+      listeClasses = util.filtrerParAnnotation(
+            toutesLesClasses,
+            Controller.class);
+
+      for (Class<?> clazz : listeClasses) {
+
+         Method[] methodes = clazz.getDeclaredMethods();
+
+         for (Method methode : methodes) {
+
+            if (methode.isAnnotationPresent(UrlMapping.class)) {
+
+               UrlMapping annotation = methode.getAnnotation(UrlMapping.class);
+
+               String url = annotation.value();
+
+               mappingClasses.put(url, clazz);
+               mappingMethodes.put(url, methode);
+            }
+         }
+      }
    }
 
    @Override
-   protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-      afficherClassesAnnotees(req, res);
-   }
+   protected void doGet(HttpServletRequest req, HttpServletResponse res)
+         throws ServletException, IOException {
 
-   public void afficherClassesAnnotees(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-      res.setContentType("text/html");
+      res.setContentType("text/html;charset=UTF-8");
+
       PrintWriter out = res.getWriter();
-      
-      out.println("<h3>Liste des classes annotés " +Controller.class.getSimpleName()+ " dans le JAR :</h3>");
-      if (this.listeControleurs.isEmpty()) {
-         out.println("<p>Aucune classe trouvée</p>");
-      } else {
-         out.println("<ul>");
-         for (Class c : this.listeControleurs) {
-            out.println("<li>" + c.getName() + "</li>");
+
+      String url = req.getPathInfo();
+
+      if (url == null || url.equals("/")) {
+
+         out.println("<h2>Liste des contrôleurs</h2>");
+
+         for (Class<?> clazz : listeClasses) {
+
+            out.println("<h3>" + clazz.getName() + "</h3>");
+            out.println("<ul>");
+
+            for (Method m : clazz.getDeclaredMethods()) {
+               out.println("<li>" + m.getName() + "</li>");
+            }
+
+            out.println("</ul><hr>");
          }
+
+         return;
+      } else {
+         out.println("url non disponible : " + url);
+         out.println("<h2>Liste des contrôleurs</h2>");
+
+         for (Class<?> clazz : listeClasses) {
+
+            out.println("<h3>" + clazz.getName() + "</h3>");
+            out.println("<ul>");
+
+            for (Method m : clazz.getDeclaredMethods()) {
+               out.println("<li>" + m.getName() + "</li>");
+            }
+
+            out.println("</ul><hr>");
+         }
+
+         Class<?> clazz = mappingClasses.get(url);
+         Method method = mappingMethodes.get(url);
+
+         out.println("<h2>Classe : " + clazz.getName() + "</h2>");
+         out.println("<h3>Méthode :</h3>");
+         out.println("<ul>");
+         out.println("<li>" + method.getName() + "</li>");
          out.println("</ul>");
+
+         return;
+
       }
+
    }
 }
