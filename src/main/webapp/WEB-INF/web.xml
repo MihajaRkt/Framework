@@ -7,7 +7,7 @@
 
 
     <servlet>
-        <servlet-name>HelloWorldServlet</servlet-name>
+        <servlet-name>VueServlet</servlet-name>
         <servlet-class>servlet.VueServlet</servlet-class>
     </servlet>
 
@@ -18,7 +18,7 @@
     </init-param>
 
     <servlet-mapping>
-        <servlet-name>HelloWorldServlet</servlet-name>
+        <servlet-name>VueServlet</servlet-name>
         <url-pattern>/*</url-pattern>
     </servlet-mapping>
 </web-app>
