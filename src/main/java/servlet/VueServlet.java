@@ -66,7 +66,7 @@ public class VueServlet extends HttpServlet {
         }
     }
 
-    public void afficherMethodesGet(HttpServletRequest req, HttpServletResponse res)
+    public void afficherMethodes(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
 
         res.setContentType("text/html;charset=UTF-8");
@@ -134,6 +134,13 @@ public class VueServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        afficherMethodesGet(req, res);
+        afficherMethodes(req, res);
     }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse res)
+            throws ServletException, IOException {
+        afficherMethodes(req, res);
+    }
+
 }
