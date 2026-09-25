@@ -2,6 +2,7 @@ package servlet;
 
 import annotation.Controller;
 import annotation.Url;
+import annotation.WebAPI;
 import donnees.ModelAndView;
 
 import java.io.*;
@@ -37,14 +38,12 @@ public class VueServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        // afficherMethodes(req, res);
-        afficherPage(req, res);
+        verifierAPI(req, res);
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        // afficherMethodes(req, res);
     }
 
     @SuppressWarnings("unchecked")
@@ -102,20 +101,18 @@ public class VueServlet extends HttpServlet {
         }
     }
 
-    public void afficherPage(HttpServletRequest req, HttpServletResponse res)
+    public void afficherPage(HttpServletRequest req, HttpServletResponse res, String objet)
             throws ServletException, IOException {
 
         ModelAndView mav = new ModelAndView();
         mav.setView("index");
 
         Map<String, Object> map = new HashMap<>();
-        map.put("test", "1er test");
-        map.put("Another test", "2e test");
+        map.put("test", "Just a test");
+        map.put("lien", objet);
         mav.setHashmap(map);
 
         String url = this.prefix + mav.getView() + this.suffix;
-
-        System.out.println("URL DE LA PAGEEEEEEEEEEEEEEEEEEE" + url);
 
         for (Map.Entry<String, Object> entry : mav.getHashmap().entrySet()) {
             req.setAttribute(entry.getKey(), entry.getValue());
@@ -123,6 +120,69 @@ public class VueServlet extends HttpServlet {
 
         RequestDispatcher dispat = req.getRequestDispatcher(url);
         dispat.forward(req, res);
+
     }
 
+    // Condition pour l'existence de l'annotation
+    // Vrai (Printwriter pour JSON)
+    // SI String, tonga de apetaka sinon manao toJSON
+    // Faux (Dispatcher)
+    public void verifierAPI(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
+
+        String url = req.getServletPath();
+        if (url == null || url.isEmpty()) {
+            url = req.getPathInfo();
+        }
+
+        ServletContext context = getServletContext();
+        List<Class<?>> listeClasses = (List<Class<?>>) context.getAttribute("listeClasses");
+
+        if (listeClasses != null) {
+            boolean verif = false; 
+
+            for (Class<?> clazz : listeClasses) {
+                if (clazz.isAnnotationPresent(Controller.class)) {
+                    for (Method m : clazz.getDeclaredMethods()) {
+                        if (m.isAnnotationPresent(Url.class)) {
+                            Url annotationUrl = m.getAnnotation(Url.class);
+
+                            if (annotationUrl.value().equals(url) || url.equals("/")) {
+                                verif = true; 
+                                if (m.isAnnotationPresent(WebAPI.class)) {
+                                    WebAPI web = m.getAnnotation(WebAPI.class);
+                                    repondreEnJSON(res, web, m);
+                                } else {
+                                    afficherPage(req, res, url);
+                                }
+                                return; 
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!verif) {
+                String erreur = url + " (Lien non valide)";
+                afficherPage(req, res, erreur);
+            }
+        }
+    }
+
+    private void repondreEnJSON(HttpServletResponse res, WebAPI w, Method m) {
+        try {
+            res.setContentType("application/json;charset=UTF-8");
+            PrintWriter out = res.getWriter();
+
+            String jsonResponse = "{\n" +
+                    "  \"Annotation\": \"" + w + "\",\n" +
+                    "  \"Methode\": \"" + m.getName() + "\",\n" +
+                    "  \"succes\": \"Méthode API appelée avec succès\"\n" +
+                    "}";
+
+            out.print(jsonResponse);
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

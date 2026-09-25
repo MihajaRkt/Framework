@@ -11,15 +11,15 @@
     <body>
 
         <%
-            String test= (String) (request.getAttribute("test"));
-            String test2= (String) (request.getAttribute("Another test"));
+            String test= (String) (request.getAttribute("lien"));
+            String test2= (String) (request.getAttribute("test"));
+
         %>
 
-        <h3> Liste des attributs </h3>
+        <h3> Page </h3>
         <ul>
-            <li> test : <%= test %> </li>
-            <li> Another test : <%= test2 %> </li>
-
+            <li> Lien : <%= test %> </li>
+            <li> POur la page : <%= test2 %> </li>
         </ul>
 
     </body>
