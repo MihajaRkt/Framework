@@ -224,4 +224,66 @@ public class VueServlet extends HttpServlet {
         }
     }
 
+    // Condition pour l'existence de l'annotation
+    // Vrai (Printwriter pour JSON)
+    // SI String, tonga de apetaka sinon manao toJSON
+    // Faux (Dispatcher)
+    public void verifierAPI(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
+
+        String url = req.getServletPath();
+        if (url == null || url.isEmpty()) {
+            url = req.getPathInfo();
+        }
+
+        ServletContext context = getServletContext();
+        List<Class<?>> listeClasses = (List<Class<?>>) context.getAttribute("listeClasses");
+
+        if (listeClasses != null) {
+            boolean verif = false; 
+
+            for (Class<?> clazz : listeClasses) {
+                if (clazz.isAnnotationPresent(Controller.class)) {
+                    for (Method m : clazz.getDeclaredMethods()) {
+                        if (m.isAnnotationPresent(Url.class)) {
+                            Url annotationUrl = m.getAnnotation(Url.class);
+
+                            if (annotationUrl.value().equals(url) || url.equals("/")) {
+                                verif = true; 
+                                if (m.isAnnotationPresent(WebAPI.class)) {
+                                    WebAPI web = m.getAnnotation(WebAPI.class);
+                                    repondreEnJSON(res, web, m);
+                                } else {
+                                    afficherPage(req, res, url);
+                                }
+                                return; 
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!verif) {
+                String erreur = url + " (Lien non valide)";
+                afficherPage(req, res, erreur);
+            }
+        }
+    }
+
+    private void repondreEnJSON(HttpServletResponse res, WebAPI w, Method m) {
+        try {
+            res.setContentType("application/json;charset=UTF-8");
+            PrintWriter out = res.getWriter();
+
+            String jsonResponse = "{\n" +
+                    "  \"Annotation\": \"" + w + "\",\n" +
+                    "  \"Methode\": \"" + m.getName() + "\",\n" +
+                    "  \"succes\": \"Méthode API appelée avec succès\"\n" +
+                    "}";
+
+            out.print(jsonResponse);
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
