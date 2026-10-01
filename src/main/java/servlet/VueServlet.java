@@ -2,13 +2,14 @@ package servlet;
 
 import annotation.Controller;
 import annotation.Url;
+import annotation.WebAPI;
 import donnees.ModelAndView;
 
 import java.io.*;
 
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
-
+import objet.Model;
 import tools.URLDetails;
 
 import java.io.IOException;
@@ -17,6 +18,8 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import javax.print.DocFlavor.STRING;
 
 public class VueServlet extends HttpServlet {
 
@@ -37,14 +40,12 @@ public class VueServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        // afficherMethodes(req, res);
-        afficherPage(req, res);
+        verifierAPI(req, res);
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        // afficherMethodes(req, res);
     }
 
     @SuppressWarnings("unchecked")
@@ -102,20 +103,18 @@ public class VueServlet extends HttpServlet {
         }
     }
 
-    public void afficherPage(HttpServletRequest req, HttpServletResponse res)
+    public void afficherPage(HttpServletRequest req, HttpServletResponse res, String objet)
             throws ServletException, IOException {
 
         ModelAndView mav = new ModelAndView();
         mav.setView("index");
 
         Map<String, Object> map = new HashMap<>();
-        map.put("test", "1er test");
-        map.put("Another test", "2e test");
+        map.put("test", "Just a test");
+        map.put("lien", objet);
         mav.setHashmap(map);
 
         String url = this.prefix + mav.getView() + this.suffix;
-
-        System.out.println("URL DE LA PAGEEEEEEEEEEEEEEEEEEE" + url);
 
         for (Map.Entry<String, Object> entry : mav.getHashmap().entrySet()) {
             req.setAttribute(entry.getKey(), entry.getValue());
@@ -123,6 +122,106 @@ public class VueServlet extends HttpServlet {
 
         RequestDispatcher dispat = req.getRequestDispatcher(url);
         dispat.forward(req, res);
+
+    }
+
+    // Condition pour l'existence de l'annotation
+    // Vrai (Printwriter pour JSON)
+    // SI String, tonga de apetaka sinon manao toJSON
+    // Faux (Dispatcher)
+    public void verifierAPI(HttpServletRequest req, HttpServletResponse res)
+            throws ServletException, IOException {
+
+        String url = req.getServletPath();
+        if (url == null || url.isEmpty()) {
+            url = req.getPathInfo();
+        }
+
+        ServletContext context = getServletContext();
+        List<Class<?>> listeClasses = (List<Class<?>>) context.getAttribute("listeClasses");
+
+        if (listeClasses != null) {
+            boolean verif = false;
+
+            for (Class<?> clazz : listeClasses) {
+                if (clazz.isAnnotationPresent(Controller.class)) {
+                    for (Method m : clazz.getDeclaredMethods()) {
+                        if (m.isAnnotationPresent(Url.class)) {
+                            Url annotationUrl = m.getAnnotation(Url.class);
+
+                            if (annotationUrl.value().equals(url)) {
+                                verif = true;
+                                if (m.isAnnotationPresent(WebAPI.class)) {
+                                    try {
+                                        Object instance = clazz.getDeclaredConstructor().newInstance();
+
+                                        Object o = m.invoke(instance);
+
+                                        if (o instanceof String) {
+                                            repondreEnJSONString(res, m, (String) o);
+                                        } else {
+                                            repondreEnJSON(res, m, o);
+                                        }
+
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                } else {
+                                    afficherPage(req, res, url);
+                                }
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!verif) {
+                String erreur = url + " (Lien non valide)";
+                afficherMethodes(req, res);
+            }
+        }
+    }
+
+    private void repondreEnJSON(HttpServletResponse res, Method m, Object o) {
+        try {
+            res.setContentType("application/json;charset=UTF-8");
+            PrintWriter out = res.getWriter();
+
+            String jsonResponse = "{\n" +
+                    "  \"Methode\": \"" + m.getName() + "\",\n" +
+                    "  \"Retour\": " + o + "\n" +
+                    "}";
+
+            if (o instanceof Model) {
+                Model model = (Model) o;
+                jsonResponse = "{\n" +
+                        "  \"Methode\": \"" + m.getName() + "\",\n" +
+                        "  \"Id\": " + model.getId() + ",\n" +
+                        "  \"Nom\": \"" + model.getNom() + "\"\n" +
+                        "}";
+            }
+
+            out.print(jsonResponse);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void repondreEnJSONString(HttpServletResponse res, Method m, String s) {
+        try {
+            res.setContentType("application/json;charset=UTF-8");
+            PrintWriter out = res.getWriter();
+
+            String jsonResponse = "{\n" +
+                    "  \"Methode\": \"" + m.getName() + "\",\n" +
+                    "  \"Retour\": \"" +s+ "\"\n" +
+                    "}";
+
+            out.print(jsonResponse);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }
