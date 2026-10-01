@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                              https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0">
+
+    <display-name>Application WEB affichant HelloWorld</display-name>
+
+    <listener>
+        <listener-class>listener.InitListener</listener-class>
+    </listener>
+
+    <servlet>
+        <servlet-name>VueServlet</servlet-name>
+        <servlet-class>servlet.VueServlet</servlet-class>
+        <init-param>
+            <param-name>scanController</param-name>
+            <param-value>annotation;tools</param-value>
+        </init-param>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>VueServlet</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+
+    <context-param>
+        <param-name>prefix</param-name>
+        <param-value>/WEB-INF/</param-value>
+    </context-param>
+
+    <context-param>
+        <param-name>suffix</param-name>
+        <param-value>.jsp</param-value>
+    </context-param>
+
+</web-app>
