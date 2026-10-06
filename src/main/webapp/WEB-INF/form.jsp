@@ -7,9 +7,9 @@
 </head>
 <body> 
     <h2> Formulaire </h2>
-    <form action="/save" method="post">
-        <p> Nom <input type="text" name="nom"> </p>
-        <p> Age <input type="text" name="age"> </p>
+    <form action="${pageContext.request.contextPath}/save" method="post">
+        <p> Nom : <input type="text" name="nom" value="john"> </p>
+        <p> Age : <input type="number" name="age" value="20"> </p>
         <input type="submit" value="Valider">
     </form>
 </body>

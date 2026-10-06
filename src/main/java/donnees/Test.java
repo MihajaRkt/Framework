@@ -39,9 +39,4 @@ public class Test {
         return 145;
     }
 
-    @Url(value= "/envoi", methode="POST")
-    public void form(String nom, String age){
-        System.out.println("Nom: " +nom+ ", Age: " +age);
-    }   
-
 }

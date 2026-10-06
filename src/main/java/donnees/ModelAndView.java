@@ -51,4 +51,18 @@ public class ModelAndView {
 
         return form;
     }
+
+    @Url(value = "/save", methode="POST")
+    public ModelAndView resultatForm(String nom, int age){
+        Map<String, Object> page= new HashMap<>();
+        ModelAndView mav= new ModelAndView();
+
+        mav.setView("resultat");
+        page.put("nom", nom);
+        page.put("age", age);
+        mav.setHashmap(page);
+
+        return mav;
+
+    }
 }

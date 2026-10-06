@@ -15,6 +15,8 @@ import tools.URLDetails;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +46,7 @@ public class VueServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
+        verifierForm(req, res);
     }
 
     @SuppressWarnings("unchecked")
@@ -123,12 +126,29 @@ public class VueServlet extends HttpServlet {
 
     }
 
+    private Method trouverMethode(List<Class<?>> listeClasses, String url) {
+        if (listeClasses != null) {
+            for (Class<?> clazz : listeClasses) {
+                if (clazz.isAnnotationPresent(Controller.class)) {
+                    for (Method m : clazz.getDeclaredMethods()) {
+                        if (m.isAnnotationPresent(Url.class)) {
+                            Url annotationUrl = m.getAnnotation(Url.class);
+                            if (annotationUrl.value().equals(url)) {
+                                return m;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     // Condition pour l'existence de l'annotation
     // Vrai (Printwriter pour JSON)
     // SI String, tonga de apetaka sinon manao toJSON
     // Faux (Dispatcher)
-    public void verifierAPI(HttpServletRequest req, HttpServletResponse res)
-            throws ServletException, IOException {
+    public void verifierAPI(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
 
         String url = req.getServletPath();
         if (url == null || url.isEmpty()) {
@@ -137,58 +157,51 @@ public class VueServlet extends HttpServlet {
 
         ServletContext context = getServletContext();
         List<Class<?>> listeClasses = (List<Class<?>>) context.getAttribute("listeClasses");
+        if (url.equals("/")) {
+            afficherMethodes(req, res);
+            return;
+        }
 
-        if (listeClasses != null) {
-            boolean verif = false;
+        // 1. Appel de la fonction
+        Method m = trouverMethode(listeClasses, url);
 
-            for (Class<?> clazz : listeClasses) {
-                if (clazz.isAnnotationPresent(Controller.class)) {
-                    for (Method m : clazz.getDeclaredMethods()) {
-                        if (m.isAnnotationPresent(Url.class)) {
-                            Url annotationUrl = m.getAnnotation(Url.class);
+        // 2. Si la méthode existe
+        if (m != null) {
+            if (m.isAnnotationPresent(WebAPI.class)) {
+                try {
+                    Class<?> clazz = m.getDeclaringClass();
+                    Object instance = clazz.getDeclaredConstructor().newInstance();
 
-                            if (annotationUrl.value().equals(url)) {
-                                verif = true;
-                                if (m.isAnnotationPresent(WebAPI.class)) {
-                                    try {
-                                        Object instance = clazz.getDeclaredConstructor().newInstance();
-                                        Object o = m.invoke(instance);
+                    Object o = m.invoke(instance);
 
-                                        if (o instanceof String) {
-                                            repondreEnJSONString(res, m, (String) o);
-                                        } else if (o instanceof ModelAndView) {
-                                            ModelAndView mav= (ModelAndView) o;
-                                            String lien = this.prefix + mav.getView() + this.suffix;
+                    if (o instanceof String) {
+                        repondreEnJSONString(res, m, (String) o);
+                    } else if (o instanceof ModelAndView) {
+                        ModelAndView mav = (ModelAndView) o;
+                        String lien = this.prefix + mav.getView() + this.suffix;
 
-                                            for (Map.Entry<String, Object> entry : mav.getHashmap().entrySet()) {
-                                                req.setAttribute(entry.getKey(), entry.getValue());
-                                            }
-
-                                            RequestDispatcher dispat = req.getRequestDispatcher(lien);
-                                            dispat.forward(req, res);
-
-                                        } else {
-                                            repondreEnJSON(res, m, o);
-                                        }
-
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
-                                    }
-                                } else {
-                                    afficherPage(req, res, url);
-                                }
-                                return;
-                            }
+                        for (Map.Entry<String, Object> entry : mav.getHashmap().entrySet()) {
+                            req.setAttribute(entry.getKey(), entry.getValue());
                         }
-                    }
-                }
-            }
 
-            if (!verif) {
-                String erreur = url + " (Lien non valide)";
+                        RequestDispatcher dispat = req.getRequestDispatcher(lien);
+                        dispat.forward(req, res);
+                    } else {
+                        repondreEnJSON(res, m, o);
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } else {
                 afficherMethodes(req, res);
             }
+            return;
         }
+
+        // 3. Si l'URL n'est pas annotée
+        String erreur = url + " (Lien non valide)";
+        afficherPage(req, res, erreur);
     }
 
     private void repondreEnJSON(HttpServletResponse res, Method m, Object o) {
@@ -232,7 +245,81 @@ public class VueServlet extends HttpServlet {
         }
     }
 
-    public void verifierForm(HttpServletRequest req, HttpServletResponse res){
-        
+    // Alaina automatique ny valeur ao @ form
+    // Comparena amle type ao @ form
+    public void verifierForm(HttpServletRequest req, HttpServletResponse res) {
+        try {
+            String url = req.getServletPath();
+            if (url == null || url.isEmpty()) {
+                url = req.getPathInfo();
+            }
+
+            ServletContext context = getServletContext();
+            List<Class<?>> listeClasses = (List<Class<?>>) context.getAttribute("listeClasses");
+            
+            Method m = trouverMethode(listeClasses, url);
+            m.setAccessible(true);
+            Class<?> clazz = m.getDeclaringClass();
+            System.out.println(clazz);
+
+            if (m != null && clazz != null) {
+                Object instance = clazz.getDeclaredConstructor().newInstance();
+
+                Parameter[] parameters = m.getParameters();
+                Object[] args = new Object[parameters.length];
+
+                for (int i = 0; i < parameters.length; i++) {
+                    Parameter param = parameters[i];
+                    String paramName = param.getName();
+                    String paramValue = req.getParameter(paramName);
+
+                    Class<?> paramType = param.getType();
+
+                    args[i] = convertirObjet(paramValue, paramType);
+                }
+
+                Object result = m.invoke(instance, args);
+                if (result instanceof ModelAndView) {
+                    ModelAndView mav = (ModelAndView) result;
+                    String lien = this.prefix + mav.getView() + this.suffix;
+
+                    for (Map.Entry<String, Object> entry : mav.getHashmap().entrySet()) {
+                        req.setAttribute(entry.getKey(), entry.getValue());
+                    }
+
+                    RequestDispatcher dispat = req.getRequestDispatcher(lien);
+                    dispat.forward(req, res);
+
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Méthode utilitaire pour les types primitifs quand la valeur reçue est
+    // null/vide
+    private Object getPrimitiveDefault(Class<?> type) {
+        if (type == int.class)
+            return 0;
+        if (type == double.class)
+            return 0.0;
+        if (type == boolean.class)
+            return false;
+        return 0;
+    }
+
+    private Object convertirObjet(String paramValue, Class<?> paramType) {
+        if (paramValue == null || paramValue.trim().isEmpty()) {
+            return paramType.isPrimitive() ? getPrimitiveDefault(paramType) : null;
+        } else if (paramType == int.class || paramType == Integer.class) {
+            return Integer.parseInt(paramValue);
+        } else if (paramType == double.class || paramType == Double.class) {
+            return Double.parseDouble(paramValue);
+        } else if (paramType == boolean.class || paramType == Boolean.class) {
+            return Boolean.parseBoolean(paramValue);
+        } else {
+            return paramValue;
+        }
     }
 }
