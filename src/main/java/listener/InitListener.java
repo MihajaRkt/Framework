@@ -23,6 +23,9 @@ public class InitListener implements ServletContextListener {
     public void contextInitialized(ServletContextEvent sce) {
         ServletContext context = sce.getServletContext();
 
+        String prefix = context.getInitParameter("prefix");
+        String suffix = context.getInitParameter("suffix");
+
         String cheminJar = context.getRealPath("/WEB-INF/lib/Sprint.jar");
         File fichierJar = new File(cheminJar);
 
@@ -63,7 +66,8 @@ public class InitListener implements ServletContextListener {
         context.setAttribute("mappingClasses", mappingClasses);
         context.setAttribute("mappingMethodes", mappingMethodes);
 
-        System.out.println("🚀 Scan terminé avec succès au démarrage !");
+        context.setAttribute("prefix", prefix);
+        context.setAttribute("suffix", suffix);
     }
 
     @Override
