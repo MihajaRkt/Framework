@@ -2,6 +2,7 @@ package tools;
 
 import java.io.File;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.jar.JarFile;
 
 public class Util {
 
-    public void scannerJar(File fichierJar, List<Class> listeClasses) {
+    public void scannerJar(File fichierJar, List<Class<?>> listeClasses) {
         try (JarFile jar = new JarFile(fichierJar)) {
             Enumeration<JarEntry> entrees = jar.entries();
 
@@ -20,10 +21,10 @@ public class Util {
 
                 if (nomEntree.endsWith(".class")) {
                     String nomClasse = nomEntree.replace("/", ".")
-                                                .replace(".class", "");
-                    
+                            .replace(".class", "");
+
                     try {
-                        Class clazz = Class.forName(nomClasse);
+                        Class<?> clazz = Class.forName(nomClasse);
                         listeClasses.add(clazz);
                     } catch (ClassNotFoundException | NoClassDefFoundError e) {
                     }
@@ -34,14 +35,40 @@ public class Util {
         }
     }
 
-    // Filtre générique pour n'importe quelle annotation (ex: Controller.class)
-    public List<Class> filtrerParAnnotation(List<Class> listeClasses, Class<? extends Annotation> annotationRecherchee) {
-        List<Class> classesAnnotees = new ArrayList<>();
-        for (Class clazz : listeClasses) {
+    public List<Class<?>> filtrerParAnnotation(
+            List<Class<?>> listeClasses,
+            Class<? extends Annotation> annotationRecherchee) {
+
+        List<Class<?>> classesAnnotees = new ArrayList<>();
+
+        for (Class<?> clazz : listeClasses) {
             if (clazz.isAnnotationPresent(annotationRecherchee)) {
                 classesAnnotees.add(clazz);
             }
         }
+
         return classesAnnotees;
+    }
+
+    public Class<?> trouverClasseParNom(List<Class<?>> listeClasses, String nomClasse) {
+
+        for (Class<?> clazz : listeClasses) {
+            if (clazz.getSimpleName().equalsIgnoreCase(nomClasse)) {
+                return clazz;
+            }
+        }
+
+        return null;
+    }
+
+    public List<Method> recupererMethodes(Class<?> clazz) {
+
+        List<Method> methodes = new ArrayList<>();
+
+        for (Method methode : clazz.getDeclaredMethods()) {
+            methodes.add(methode);
+        }
+
+        return methodes;
     }
 }
