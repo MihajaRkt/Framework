@@ -22,12 +22,9 @@ public class VueServlet extends HttpServlet {
         // 💨 Tout le travail de scan a migré dans InitListener !
     }
 
-<<<<<<< Updated upstream
-    public void afficherMethodesGet(HttpServletRequest req, HttpServletResponse res)
-=======
     @SuppressWarnings("unchecked")
+    
     public void afficherMethodes(HttpServletRequest req, HttpServletResponse res)
->>>>>>> Stashed changes
             throws ServletException, IOException {
 
         res.setContentType("text/html;charset=UTF-8");
@@ -88,15 +85,15 @@ public class VueServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        afficherMethodesGet(req, res);
+        afficherMethodes(req, res);
     }
-<<<<<<< Updated upstream
-=======
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
         afficherMethodes(req, res);
     }
->>>>>>> Stashed changes
+
+
+
 }
