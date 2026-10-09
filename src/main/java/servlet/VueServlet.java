@@ -48,6 +48,7 @@ public class VueServlet extends HttpServlet {
     }
 
     @SuppressWarnings("unchecked")
+    
     public void afficherMethodes(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
 
@@ -104,6 +105,11 @@ public class VueServlet extends HttpServlet {
 
     public void afficherPage(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
+<<<<<<< HEAD
+=======
+        afficherMethodes(req, res);
+    }
+>>>>>>> origin/main
 
         ModelAndView mav = new ModelAndView();
         mav.setView("index");
@@ -125,4 +131,9 @@ public class VueServlet extends HttpServlet {
         dispat.forward(req, res);
     }
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> origin/main
 }
