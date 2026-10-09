@@ -185,10 +185,8 @@ public class VueServlet extends HttpServlet {
             return;
         }
 
-        // 1. Appel de la fonction
         Method m = trouverMethode(listeClasses, url);
 
-        // 2. Si la méthode existe
         if (m != null) {
             if (m.isAnnotationPresent(WebAPI.class)) {
                 try {
@@ -222,7 +220,6 @@ public class VueServlet extends HttpServlet {
             return;
         }
 
-        // 3. Si l'URL n'est pas annotée
         String erreur = url + " (Lien non valide)";
         afficherPage(req, res, erreur);
     }
