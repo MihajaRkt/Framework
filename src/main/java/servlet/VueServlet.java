@@ -105,11 +105,6 @@ public class VueServlet extends HttpServlet {
 
     public void afficherPage(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-<<<<<<< HEAD
-=======
-        afficherMethodes(req, res);
-    }
->>>>>>> origin/main
 
         ModelAndView mav = new ModelAndView();
         mav.setView("index");
@@ -130,10 +125,4 @@ public class VueServlet extends HttpServlet {
         RequestDispatcher dispat = req.getRequestDispatcher(url);
         dispat.forward(req, res);
     }
-
-<<<<<<< HEAD
-=======
-
-
->>>>>>> origin/main
 }
