@@ -5,8 +5,6 @@ import annotation.Url;
 import annotation.WebAPI;
 import donnees.ModelAndView;
 
-import java.io.*;
-
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import objet.Model;
@@ -14,9 +12,9 @@ import tools.URLDetails;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,13 +38,38 @@ public class VueServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        verifierAPI(req, res);
+        processRequest(req, res);
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
-        verifierForm(req, res);
+        processRequest(req, res);
+    }
+
+    private void processRequest(HttpServletRequest req, HttpServletResponse res) {
+        try {
+            String url = req.getServletPath();
+            if (url == null || url.isEmpty()) {
+                url = req.getPathInfo();
+            }
+
+            if (url == null || url.equals("/")) {
+                afficherMethodes(req, res);
+                return;
+            }
+
+            String methodeHttp = req.getMethod();
+
+            if ("POST".equalsIgnoreCase(methodeHttp)) {
+                verifierForm(req, res);
+            } else {
+                verifierAPI(req, res);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -256,7 +279,7 @@ public class VueServlet extends HttpServlet {
 
             ServletContext context = getServletContext();
             List<Class<?>> listeClasses = (List<Class<?>>) context.getAttribute("listeClasses");
-            
+
             Method m = trouverMethode(listeClasses, url);
             m.setAccessible(true);
             Class<?> clazz = m.getDeclaringClass();
@@ -270,12 +293,16 @@ public class VueServlet extends HttpServlet {
 
                 for (int i = 0; i < parameters.length; i++) {
                     Parameter param = parameters[i];
-                    String paramName = param.getName();
-                    String paramValue = req.getParameter(paramName);
 
                     Class<?> paramType = param.getType();
 
-                    args[i] = convertirObjet(paramValue, paramType);
+                    if (isTypeSimple(paramType)) {
+                        String paramName = param.getName();
+                        String paramValue = req.getParameter(paramName);
+                        args[i] = convertirObjet(paramValue, paramType);
+                    } else{
+                        args[i] = remplirObjet(paramType, req);
+                    }
                 }
 
                 Object result = m.invoke(instance, args);
@@ -289,7 +316,6 @@ public class VueServlet extends HttpServlet {
 
                     RequestDispatcher dispat = req.getRequestDispatcher(lien);
                     dispat.forward(req, res);
-
                 }
             }
         } catch (Exception e) {
@@ -321,5 +347,39 @@ public class VueServlet extends HttpServlet {
         } else {
             return paramValue;
         }
+    }
+
+    private Object remplirObjet(Class<?> clazz, HttpServletRequest req) {
+        try {
+            Object instance = clazz.getDeclaredConstructor().newInstance();
+
+            for (Field field : clazz.getDeclaredFields()) {
+                field.setAccessible(true);
+
+                String fieldName = field.getName();
+                String paramValue = req.getParameter(fieldName);
+
+                if (paramValue != null) {
+                    Class<?> fieldType = field.getType();
+                    Object convertedValue = convertirObjet(paramValue, fieldType);
+
+                    field.set(instance, convertedValue);
+                }
+            }
+            return instance;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private boolean isTypeSimple(Class<?> type) {
+        return type.isPrimitive()
+                || type.equals(String.class)
+                || type.equals(Integer.class)
+                || type.equals(Double.class)
+                || type.equals(Float.class)
+                || type.equals(Boolean.class)
+                || type.equals(Long.class);
     }
 }

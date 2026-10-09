@@ -6,8 +6,9 @@ import java.util.Map;
 import annotation.Controller;
 import annotation.Url;
 import annotation.WebAPI;
+import objet.Voiture;
 
-@Controller 
+@Controller
 public class ModelAndView {
     private String view;
     private Map<String, Object> hashmap = new HashMap<>();
@@ -28,11 +29,11 @@ public class ModelAndView {
         this.hashmap = hashmap;
     }
 
-    @WebAPI 
+    @WebAPI
     @Url(value = "/mav")
-    public static ModelAndView mavTest(){
-        Map<String, Object> page= new HashMap<>();
-        ModelAndView mav= new ModelAndView();
+    public static ModelAndView mavTest() {
+        Map<String, Object> page = new HashMap<>();
+        ModelAndView mav = new ModelAndView();
 
         mav.setView("APITest");
         page.put("test", "test");
@@ -40,22 +41,22 @@ public class ModelAndView {
         mav.setHashmap(page);
 
         return mav;
-        
+
     }
 
-    @WebAPI 
+    @WebAPI
     @Url(value = "/form")
     public ModelAndView afficherForm() {
-        ModelAndView form= new ModelAndView();
+        ModelAndView form = new ModelAndView();
         form.setView("form");
 
         return form;
     }
 
-    @Url(value = "/save", methode="POST")
-    public ModelAndView resultatForm(String nom, int age){
-        Map<String, Object> page= new HashMap<>();
-        ModelAndView mav= new ModelAndView();
+    @Url(value = "/save", methode = "POST")
+    public ModelAndView resultatForm(String nom, int age) {
+        Map<String, Object> page = new HashMap<>();
+        ModelAndView mav = new ModelAndView();
 
         mav.setView("resultat");
         page.put("nom", nom);
@@ -63,6 +64,27 @@ public class ModelAndView {
         mav.setHashmap(page);
 
         return mav;
-
     }
+
+    @WebAPI
+    @Url(value = "/form-objet")
+    public ModelAndView afficherFormObj() {
+        ModelAndView form = new ModelAndView();
+        form.setView("form-objet");
+
+        return form;
+    }
+
+    @Url(value = "/save-objet", methode = "POST")
+    public ModelAndView resultatObj(Voiture voiture) {
+        Map<String, Object> page = new HashMap<>();
+        ModelAndView mav = new ModelAndView();
+
+        mav.setView("resultat-objet");
+        page.put("voiture", voiture);
+        mav.setHashmap(page);
+
+        return mav;
+    }
+
 }
