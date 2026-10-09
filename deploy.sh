@@ -28,5 +28,5 @@ jar -cvf ../$JAR_NAME.jar *
 cd - > /dev/null
 
 echo ""
-echo "Génération terminée ! Votre fichier se trouve ici : $BUILD_DIR/$JAR_NAME.jar"
+echo "Déploiement terminé"
 echo ""
