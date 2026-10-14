@@ -7,32 +7,33 @@ WEBAPP_DIR="src/main/webapp"
 BUILD_DIR="build"
 LIB_DIR="lib"
 SERVLET_API_JAR="$LIB_DIR/servlet-api.jar"
-TOMCAT_WEBAPPS="/home/ideapad/tomcat-10.0.16/tomcat/webapp"   # <-- adapte ce chemin
+TOMCAT_WEBAPPS="/home/ideapad/tomcat-10.0.16/tomcat/webapps"   # <-- 'webapps' corrigé (avec 's')
 
-# Nettoyage et création du répertoire temporaire pour les classes
+# Nettoyage et création des répertoires
 rm -rf $BUILD_DIR
 mkdir -p $BUILD_DIR/classes
 
-# 1. Compilation des fichiers Java du Framework
+# 1. Compilation des fichiers Java AVEC l'option -parameters
 find $SRC_DIR -name "*.java" > sources.txt
-javac -cp $SERVLET_API_JAR -d $BUILD_DIR/classes @sources.txt
+javac -parameters -cp "$SERVLET_API_JAR" -d $BUILD_DIR/classes @sources.txt
 rm sources.txt
 
-# 2. Génération du fichier .jar (framework uniquement, pas les JSP)
+# 2. Génération du fichier .jar du Framework
 cd $BUILD_DIR/classes || exit
 jar -cvf ../$JAR_NAME.jar *
 cd - > /dev/null
 
-# 3. Déploiement complet dans Tomcat
-rm -rf "$TOMCAT_WEBAPPS"
-mkdir -p "$TOMCAT_WEBAPPS/WEB-INF/lib"
+# 3. Déploiement dans le dossier de l'application Tomcat (/webapps/Sprint)
+APP_DIR="$TOMCAT_WEBAPPS/$JAR_NAME"
+rm -rf "$APP_DIR"
+mkdir -p "$APP_DIR/WEB-INF/lib"
 
-# Copie de toute la webapp (web.xml, JSP, WEB-INF, etc.)
-cp -r $WEBAPP_DIR/* "$TOMCAT_WEBAPPS/"
+# Copie des fichiers Web (JSP, web.xml)
+cp -r $WEBAPP_DIR/* "$APP_DIR/"
 
-# Copie du jar du framework dans WEB-INF/lib
-cp $BUILD_DIR/$JAR_NAME.jar "$TOMCAT_WEBAPPS/WEB-INF/lib/"
+# Copie du JAR généré
+cp $BUILD_DIR/$JAR_NAME.jar "$APP_DIR/WEB-INF/lib/"
 
 echo ""
-echo "Déploiement terminé"
+echo "Déploiement terminé avec succès !"
 echo ""
