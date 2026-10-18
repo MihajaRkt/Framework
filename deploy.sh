@@ -3,6 +3,7 @@
 # Définition des variables
 JAR_NAME="Sprint"
 SRC_DIR="src/main/java"
+RESSOURCE_DIR="src/main/resources"
 WEBAPP_DIR="src/main/webapp"
 BUILD_DIR="build"
 LIB_DIR="lib"
@@ -17,6 +18,8 @@ mkdir -p $BUILD_DIR/classes
 find $SRC_DIR -name "*.java" > sources.txt
 javac -parameters -cp "$SERVLET_API_JAR" -d $BUILD_DIR/classes @sources.txt
 rm sources.txt
+
+cp -r $RESSOURCE_DIR/* $BUILD_DIR/classes
 
 # 2. Génération du fichier .jar du Framework
 cd $BUILD_DIR/classes || exit
