@@ -6,7 +6,10 @@ import java.util.Map;
 import annotation.Controller;
 import annotation.Url;
 import annotation.WebAPI;
+import jakarta.servlet.http.HttpSession;
+import objet.MySession;
 import objet.Voiture;
+import tools.SessionUtil;
 
 @Controller
 public class ModelAndView {
@@ -108,4 +111,24 @@ public class ModelAndView {
         return mav;
     }
 
+    @WebAPI
+    @Url(value= "/session")
+    public ModelAndView testSession(){
+        ModelAndView form = new ModelAndView();
+        form.setView("test-session");
+
+        return form;
+    }
+
+    @Url(value = "/test-session", methode = "POST")
+    public ModelAndView activerSession(String nom, MySession session){
+        Map<String, Object> page = new HashMap<>();
+        ModelAndView mav = new ModelAndView();
+
+        mav.setView("valeur-session");
+        page.put("session", session);
+        mav.setHashmap(page);
+
+        return mav;
+    }
 }
