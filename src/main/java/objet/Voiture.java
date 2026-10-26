@@ -4,7 +4,14 @@ public class Voiture {
     private String nom;
     private double vitesse;
     private String description;
-    
+    private MapFile photo;
+
+    public MapFile getPhoto() {
+        return photo;
+    }
+    public void setPhoto(MapFile photo) {
+        this.photo = photo;
+    }
     public String getNom() {
         return nom;
     }

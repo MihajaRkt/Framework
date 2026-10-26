@@ -6,19 +6,28 @@ import annotation.WebAPI;
 import donnees.ModelAndView;
 
 import jakarta.servlet.*;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.*;
+import objet.MapFile;
 import objet.Model;
 import tools.URLDetails;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
+@MultipartConfig
 public class VueServlet extends HttpServlet {
 
     private Map<String, Class<?>> mappingClasses;
@@ -72,8 +81,6 @@ public class VueServlet extends HttpServlet {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    
     public void afficherMethodes(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
 
@@ -296,7 +303,7 @@ public class VueServlet extends HttpServlet {
                         String paramName = param.getName();
                         String paramValue = req.getParameter(paramName);
                         args[i] = convertirObjet(paramValue, paramType);
-                    } else{
+                    } else {
                         args[i] = remplirObjet(paramType, req);
                     }
                 }
@@ -340,6 +347,8 @@ public class VueServlet extends HttpServlet {
             return Double.parseDouble(paramValue);
         } else if (paramType == boolean.class || paramType == Boolean.class) {
             return Boolean.parseBoolean(paramValue);
+        } else if (paramType == MapFile.class) {
+            return MapFile.parsMapFile(paramValue);
         } else {
             return paramValue;
         }
@@ -348,18 +357,33 @@ public class VueServlet extends HttpServlet {
     private Object remplirObjet(Class<?> clazz, HttpServletRequest req) {
         try {
             Object instance = clazz.getDeclaredConstructor().newInstance();
+            int compte = 1;
 
             for (Field field : clazz.getDeclaredFields()) {
                 field.setAccessible(true);
 
                 String fieldName = field.getName();
-                String paramValue = req.getParameter(fieldName);
+                String paramValue = null;
+                Part part = req.getPart(fieldName);
 
-                if (paramValue != null) {
+                if (part != null) {
                     Class<?> fieldType = field.getType();
-                    Object convertedValue = convertirObjet(paramValue, fieldType);
+                    System.out.println("Field Type(" + compte + "): " + fieldType.getSimpleName());
 
+                    if (fieldType.getSimpleName().contains("MapFile")) {
+                        paramValue = part.getSubmittedFileName();
+                        uploadFile(fieldName, req);
+                    } else {
+                        paramValue= req.getParameter(fieldName);
+                    }
+
+                    System.out.println("Field Name(" + compte + "): " + fieldName);
+                    System.out.println("Param Value(" + compte + "): " + paramValue + "\n");
+
+                    Object convertedValue = convertirObjet(paramValue, fieldType);
                     field.set(instance, convertedValue);
+
+                    compte++;
                 }
             }
             return instance;
@@ -378,4 +402,36 @@ public class VueServlet extends HttpServlet {
                 || type.equals(Boolean.class)
                 || type.equals(Long.class);
     }
+
+    private void uploadFile(String fieldName, HttpServletRequest req) {
+        Properties prop = new Properties();
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream("app.properties")) {
+            prop.load(input);
+
+            String uploadDir = prop.getProperty("path");
+
+            // Alaina en binaire le fichier
+            Part filePart = req.getPart(fieldName);
+            if (filePart == null || filePart.getSubmittedFileName() == null ||
+                    filePart.getSubmittedFileName().isEmpty()) {
+                throw new Exception("Fichier non disponible ou non existant");
+            }
+
+            String fileName = filePart.getSubmittedFileName();
+
+            // Dossier de destination
+            File destinationFolder = new File(uploadDir);
+
+            File targetFile = new File(destinationFolder, fileName);
+            try (InputStream fileStream = filePart.getInputStream()) {
+                Files.copy(fileStream, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            System.out.println("Fichier enregistré");
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
 }

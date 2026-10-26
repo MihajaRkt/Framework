@@ -87,4 +87,25 @@ public class ModelAndView {
         return mav;
     }
 
+    @WebAPI
+    @Url(value = "/form-file")
+    public ModelAndView afficherFormFile() {
+        ModelAndView form = new ModelAndView();
+        form.setView("form-file");
+
+        return form;
+    }
+
+    @Url(value = "/upload-file", methode = "POST")
+    public ModelAndView resultatFile(Voiture voiture) {
+        Map<String, Object> page = new HashMap<>();
+        ModelAndView mav = new ModelAndView();
+
+        mav.setView("resultat-file");
+        page.put("voiture", voiture);
+        mav.setHashmap(page);
+
+        return mav;
+    }
+
 }
