@@ -66,6 +66,7 @@ public class VueServlet extends HttpServlet {
             if (req.getDispatcherType() == DispatcherType.ERROR) {
                 return;
             }
+
             String url = req.getServletPath();
             if (url == null || url.isEmpty()) {
                 url = req.getPathInfo();
@@ -79,15 +80,58 @@ public class VueServlet extends HttpServlet {
             String methodeHttp = req.getMethod();
             Method methode = trouverMethode(url, methodeHttp);
 
-            // Le contrôle doit être fait avant de choisir le traitement GET/POST.
-            // La méthode de login reste publique puisqu'elle ne porte pas
-            // l'annotation @Authentification.
-            if (methode != null
-                    && methode.isAnnotationPresent(annotation.Authentification.class)
-                    && !estAuthentifie(req, res)) {
-                return;
+            if (methode != null) {
+                HttpSession httpSession = req.getSession(false);
+                MySession currentSession = null;
+
+                if (httpSession != null) {
+                    currentSession = sessions.computeIfAbsent(httpSession.getId(), key -> new MySession());
+                    SessionUtil.copyToMySession(httpSession, currentSession);
+                }
+
+                // 🔒 1. VÉRIFICATION DE L'AUTHENTIFICATION
+                if (methode.isAnnotationPresent(annotation.Authentification.class)) {
+                    if (httpSession == null || currentSession.get(this.auth) == null) {
+                        res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Accès refusé : Veuillez vous connecter.");
+                        return;
+                    }
+                }
+
+                // 👑 2. VÉRIFICATION DU RÔLE (Sprint 10 bis)
+                if (methode.isAnnotationPresent(annotation.Role.class)) {
+                    // On vérifie d'abord si l'utilisateur est authentifié
+                    if (httpSession == null || currentSession.get(this.auth) == null) {
+                        res.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                                "Accès refusé : Authentification requise pour vérifier les rôles.");
+                        return;
+                    }
+
+                    // Récupération de l'annotation @Role et des rôles autorisés
+                    annotation.Role roleAnnotation = methode.getAnnotation(annotation.Role.class);
+                    String[] authorizedRoles = roleAnnotation.roles(); // ex: {"admin"}
+
+                    // Récupération du rôle de l'utilisateur stocké dans sa session
+                    Object userRole = currentSession.get("role");
+
+                    boolean hasRole = false;
+                    if (userRole != null) {
+                        for (String r : authorizedRoles) {
+                            if (r.equals(userRole.toString())) {
+                                hasRole = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Si l'utilisateur n'a pas le bon rôle, on bloque
+                    if (!hasRole) {
+                        res.sendError(HttpServletResponse.SC_FORBIDDEN, "Accès refusé : Rôle insuffisant.");
+                        return;
+                    }
+                }
             }
 
+            // 3. Traitement habituel GET / POST
             if ("POST".equalsIgnoreCase(methodeHttp)) {
                 verifierForm(req, res);
             } else {
@@ -339,6 +383,7 @@ public class VueServlet extends HttpServlet {
                         mySessionInstance = sessions.computeIfAbsent(
                                 httpSession.getId(), key -> new MySession());
 
+                        // Sprint 9: "user" no anaranle session
                         String sessionValue = req.getParameter("user");
                         if (sessionValue != null) {
                             mySessionInstance.add("user", sessionValue);

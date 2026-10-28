@@ -16,6 +16,6 @@
         %>
 
         <p> Valeur de la session : <%= sess.get("auth") %> </p>
-
+        <p> Role : <%= sess.get("role") %> </p>
     </body>
 </html>

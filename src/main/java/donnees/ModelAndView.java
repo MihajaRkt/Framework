@@ -5,6 +5,7 @@ import java.util.Map;
 
 import annotation.Authentification;
 import annotation.Controller;
+import annotation.Role;
 import annotation.Url;
 import annotation.WebAPI;
 import jakarta.servlet.http.HttpSession;
@@ -114,6 +115,7 @@ public class ModelAndView {
         return mav;
     }
 
+    @Role (roles = {"admin"})
     @Authentification 
     @WebAPI
     @Url(value = "/session")
@@ -146,14 +148,19 @@ public class ModelAndView {
     }
 
     @Url(value = "/auth-test", methode = "POST")
-    public ModelAndView authTest(HttpSession httpSession, MySession session) {
+    public ModelAndView authTest(HttpSession httpSession, MySession session, String user) {
         Map<String, Object> page = new HashMap<>();
         ModelAndView mav = new ModelAndView();
 
-        mav.setView("auth-test");
+        if ("admin".equals(user)) {
+            session.add("auth", httpSession.getId());
+            session.add("role", "admin");
+        } else {
+            session.add("auth", httpSession.getId());
+            session.add("role", "user");
+        }
 
-        String sessionId = httpSession.getId();
-        session.add("auth", sessionId);
+        mav.setView("auth-test");
 
         page.put("session", session);
         mav.setHashmap(page);
