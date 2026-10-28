@@ -18,6 +18,10 @@
             <param-name>scanController</param-name>
             <param-value>annotation;tools</param-value>
         </init-param>
+        <init-param>
+            <param-name>authentification</param-name>
+            <param-value>auth</param-value>
+        </init-param>
     </servlet>
 
     <servlet-mapping>
