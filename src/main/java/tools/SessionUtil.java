@@ -42,8 +42,6 @@ public class SessionUtil {
         Map<String, Object> map= new HashMap<>();
         mySession.setSessionData(map);
 
-        map.put("user", "Paul");
-
         copyToHttpSession(mySession, httpSession);
 
         // System.out.println("Données dans HttpSession (Tomcat) après mise à jour :");

@@ -3,7 +3,9 @@ package donnees;
 import java.util.HashMap;
 import java.util.Map;
 
+import annotation.Authentification;
 import annotation.Controller;
+import annotation.Role;
 import annotation.Url;
 import annotation.WebAPI;
 import jakarta.servlet.http.HttpSession;
@@ -69,6 +71,7 @@ public class ModelAndView {
         return mav;
     }
 
+    @Authentification 
     @WebAPI
     @Url(value = "/form-objet")
     public ModelAndView afficherFormObj() {
@@ -90,6 +93,7 @@ public class ModelAndView {
         return mav;
     }
 
+    @Authentification 
     @WebAPI
     @Url(value = "/form-file")
     public ModelAndView afficherFormFile() {
@@ -111,9 +115,11 @@ public class ModelAndView {
         return mav;
     }
 
+    @Role (roles = {"admin"})
+    @Authentification 
     @WebAPI
-    @Url(value= "/session")
-    public ModelAndView testSession(){
+    @Url(value = "/session")
+    public ModelAndView testSession() {
         ModelAndView form = new ModelAndView();
         form.setView("test-session");
 
@@ -121,11 +127,41 @@ public class ModelAndView {
     }
 
     @Url(value = "/test-session", methode = "POST")
-    public ModelAndView activerSession(String nom, MySession session){
+    public ModelAndView activerSession(String nom, MySession session) {
         Map<String, Object> page = new HashMap<>();
         ModelAndView mav = new ModelAndView();
 
         mav.setView("valeur-session");
+        page.put("session", session);
+        mav.setHashmap(page);
+
+        return mav;
+    }
+
+    @WebAPI
+    @Url(value = "/auth-form")
+    public ModelAndView authSession() {
+        ModelAndView form = new ModelAndView();
+        form.setView("auth-session");
+
+        return form;
+    }
+
+    @Url(value = "/auth-test", methode = "POST")
+    public ModelAndView authTest(HttpSession httpSession, MySession session, String user) {
+        Map<String, Object> page = new HashMap<>();
+        ModelAndView mav = new ModelAndView();
+
+        if ("admin".equals(user)) {
+            session.add("auth", httpSession.getId());
+            session.add("role", "admin");
+        } else {
+            session.add("auth", httpSession.getId());
+            session.add("role", "user");
+        }
+
+        mav.setView("auth-test");
+
         page.put("session", session);
         mav.setHashmap(page);
 

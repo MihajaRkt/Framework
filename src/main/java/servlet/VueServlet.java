@@ -15,7 +15,6 @@ import tools.SessionUtil;
 import tools.URLDetails;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -37,6 +36,7 @@ public class VueServlet extends HttpServlet {
     private Map<String, MySession> sessions;
     private String prefix;
     private String suffix;
+    private String auth;
 
     @Override
     public void init() throws ServletException {
@@ -46,6 +46,7 @@ public class VueServlet extends HttpServlet {
         this.mappingClasses = (Map<String, Class<?>>) context.getAttribute("mappingClasses");
         this.mappingMethodes = (Map<URLDetails, Method>) context.getAttribute("mappingMethodes");
         this.sessions = (Map<String, MySession>) context.getAttribute("sessions");
+        this.auth = (String) this.getInitParameter("authentification");
     }
 
     @Override
@@ -62,6 +63,10 @@ public class VueServlet extends HttpServlet {
 
     private void processRequest(HttpServletRequest req, HttpServletResponse res) {
         try {
+            if (req.getDispatcherType() == DispatcherType.ERROR) {
+                return;
+            }
+
             String url = req.getServletPath();
             if (url == null || url.isEmpty()) {
                 url = req.getPathInfo();
@@ -73,7 +78,60 @@ public class VueServlet extends HttpServlet {
             }
 
             String methodeHttp = req.getMethod();
+            Method methode = trouverMethode(url, methodeHttp);
 
+            if (methode != null) {
+                HttpSession httpSession = req.getSession(false);
+                MySession currentSession = null;
+
+                if (httpSession != null) {
+                    currentSession = sessions.computeIfAbsent(httpSession.getId(), key -> new MySession());
+                    SessionUtil.copyToMySession(httpSession, currentSession);
+                }
+
+                // 🔒 1. VÉRIFICATION DE L'AUTHENTIFICATION
+                if (methode.isAnnotationPresent(annotation.Authentification.class)) {
+                    if (httpSession == null || currentSession.get(this.auth) == null) {
+                        res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Accès refusé : Veuillez vous connecter.");
+                        return;
+                    }
+                }
+
+                // 👑 2. VÉRIFICATION DU RÔLE (Sprint 10 bis)
+                if (methode.isAnnotationPresent(annotation.Role.class)) {
+                    // On vérifie d'abord si l'utilisateur est authentifié
+                    if (httpSession == null || currentSession.get(this.auth) == null) {
+                        res.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                                "Accès refusé : Authentification requise pour vérifier les rôles.");
+                        return;
+                    }
+
+                    // Récupération de l'annotation @Role et des rôles autorisés
+                    annotation.Role roleAnnotation = methode.getAnnotation(annotation.Role.class);
+                    String[] authorizedRoles = roleAnnotation.roles(); // ex: {"admin"}
+
+                    // Récupération du rôle de l'utilisateur stocké dans sa session
+                    Object userRole = currentSession.get("role");
+
+                    boolean hasRole = false;
+                    if (userRole != null) {
+                        for (String r : authorizedRoles) {
+                            if (r.equals(userRole.toString())) {
+                                hasRole = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Si l'utilisateur n'a pas le bon rôle, on bloque
+                    if (!hasRole) {
+                        res.sendError(HttpServletResponse.SC_FORBIDDEN, "Accès refusé : Rôle insuffisant.");
+                        return;
+                    }
+                }
+            }
+
+            // 3. Traitement habituel GET / POST
             if ("POST".equalsIgnoreCase(methodeHttp)) {
                 verifierForm(req, res);
             } else {
@@ -83,6 +141,41 @@ public class VueServlet extends HttpServlet {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private Method trouverMethode(String url, String methodeHttp) {
+        if (mappingMethodes == null) {
+            return null;
+        }
+        return mappingMethodes.get(new URLDetails(url, methodeHttp));
+    }
+
+    private boolean estAuthentifie(HttpServletRequest req, HttpServletResponse res)
+            throws IOException {
+        if (auth == null || auth.isBlank()) {
+            res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Le paramètre d'authentification est absent.");
+            return false;
+        }
+
+        HttpSession httpSession = req.getSession(false);
+        if (httpSession == null) {
+            res.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                    "Accès refusé : veuillez vous connecter.");
+            return false;
+        }
+
+        MySession currentSession = sessions.computeIfAbsent(
+                httpSession.getId(), key -> new MySession());
+        SessionUtil.copyToMySession(httpSession, currentSession);
+
+        if (currentSession.get(auth) == null) {
+            res.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                    "Accès refusé : veuillez vous connecter.");
+            return false;
+        }
+
+        return true;
     }
 
     public void afficherMethodes(HttpServletRequest req, HttpServletResponse res)
@@ -160,23 +253,7 @@ public class VueServlet extends HttpServlet {
         dispat.forward(req, res);
 
     }
-    private Method trouverMethode(List<Class<?>> listeClasses, String url) {
-        if (listeClasses != null) {
-            for (Class<?> clazz : listeClasses) {
-                if (clazz.isAnnotationPresent(Controller.class)) {
-                    for (Method m : clazz.getDeclaredMethods()) {
-                        if (m.isAnnotationPresent(Url.class)) {
-                            Url annotationUrl = m.getAnnotation(Url.class);
-                            if (annotationUrl.value().equals(url)) {
-                                return m;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return null;
-    }
+
     // Condition pour l'existence de l'annotation
     // Vrai (Printwriter pour JSON)
     // SI String, tonga de apetaka sinon manao toJSON
@@ -188,14 +265,12 @@ public class VueServlet extends HttpServlet {
             url = req.getPathInfo();
         }
 
-        ServletContext context = getServletContext();
-        List<Class<?>> listeClasses = (List<Class<?>>) context.getAttribute("listeClasses");
         if (url.equals("/")) {
             afficherMethodes(req, res);
             return;
         }
 
-        Method m = trouverMethode(listeClasses, url);
+        Method m = trouverMethode(url, req.getMethod());
 
         if (m != null) {
             if (m.isAnnotationPresent(WebAPI.class)) {
@@ -277,7 +352,7 @@ public class VueServlet extends HttpServlet {
 
     // Alaina automatique ny valeur ao @ form
     // Comparena amle type ao @ form
-    public void verifierForm(HttpServletRequest req, HttpServletResponse res) {
+    public void verifierForm(HttpServletRequest req, HttpServletResponse res) throws Exception {
         try {
             String url = req.getServletPath();
             if (url == null || url.isEmpty()) {
@@ -287,7 +362,7 @@ public class VueServlet extends HttpServlet {
             ServletContext context = getServletContext();
             List<Class<?>> listeClasses = (List<Class<?>>) context.getAttribute("listeClasses");
 
-            Method m = trouverMethode(listeClasses, url);
+            Method m = trouverMethode(url, req.getMethod());
             if (m != null) {
                 m.setAccessible(true);
                 Class<?> clazz = m.getDeclaringClass();
@@ -303,12 +378,12 @@ public class VueServlet extends HttpServlet {
 
                     if (paramType.equals(HttpSession.class)) {
                         args[i] = req.getSession();
-                    }
-                    else if (paramType.equals(MySession.class)) {
+                    } else if (paramType.equals(MySession.class)) {
                         HttpSession httpSession = req.getSession();
                         mySessionInstance = sessions.computeIfAbsent(
                                 httpSession.getId(), key -> new MySession());
 
+                        // Sprint 9: "user" no anaranle session
                         String sessionValue = req.getParameter("user");
                         if (sessionValue != null) {
                             mySessionInstance.add("user", sessionValue);
@@ -316,13 +391,11 @@ public class VueServlet extends HttpServlet {
 
                         SessionUtil.copyToMySession(httpSession, mySessionInstance);
                         args[i] = mySessionInstance;
-                    }
-                    else if (isTypeSimple(paramType)) {
+                    } else if (isTypeSimple(paramType)) {
                         String paramName = param.getName();
                         String paramValue = req.getParameter(paramName);
                         args[i] = convertirObjet(paramValue, paramType);
-                    }
-                    else {
+                    } else {
                         args[i] = remplirObjet(paramType, req);
                     }
                 }
