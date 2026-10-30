@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
+import jakarta.servlet.ServletContext;
+
 public class Util {
 
     public void scannerJar(File fichierJar, List<Class<?>> listeClasses) {
@@ -32,6 +34,41 @@ public class Util {
             }
         } catch (Exception e) {
             System.out.println("Erreur lors de la lecture du JAR : " + e.getMessage());
+        }
+    }
+
+    public void scannerClassesApplication(ServletContext context, List<Class<?>> listeClasses) {
+        scannerRessources(context, "/WEB-INF/classes/", listeClasses);
+    }
+
+    private void scannerRessources(ServletContext context, String chemin,
+            List<Class<?>> listeClasses) {
+        var ressources = context.getResourcePaths(chemin);
+        if (ressources == null) {
+            throw new IllegalStateException("Impossible de scanner les classes de l'application : "
+                    + chemin);
+        }
+
+        for (String ressource : ressources) {
+            if (ressource.endsWith("/")) {
+                scannerRessources(context, ressource, listeClasses);
+            } else if (ressource.endsWith(".class")) {
+                String nomClasse = ressource.substring("/WEB-INF/classes/".length())
+                        .replace('/', '.')
+                        .replace(".class", "");
+                if (!nomClasse.equals("module-info")
+                        && !nomClasse.endsWith(".module-info")) {
+                    chargerClasse(nomClasse, listeClasses);
+                }
+            }
+        }
+    }
+
+    private void chargerClasse(String nomClasse, List<Class<?>> listeClasses) {
+        try {
+            listeClasses.add(Class.forName(nomClasse));
+        } catch (ClassNotFoundException | NoClassDefFoundError e) {
+            // Certaines classes compilées peuvent dépendre d'API non disponibles au scan.
         }
     }
 
