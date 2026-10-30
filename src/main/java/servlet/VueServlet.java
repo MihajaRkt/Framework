@@ -10,6 +10,8 @@ import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.*;
 import objet.MapFile;
 import objet.Model;
+import objet.MySession;
+import tools.SessionUtil;
 import tools.URLDetails;
 
 import java.io.File;
@@ -32,6 +34,7 @@ public class VueServlet extends HttpServlet {
 
     private Map<String, Class<?>> mappingClasses;
     private Map<URLDetails, Method> mappingMethodes;
+    private Map<String, MySession> sessions;
     private String prefix;
     private String suffix;
 
@@ -42,6 +45,7 @@ public class VueServlet extends HttpServlet {
         this.suffix = (String) context.getAttribute("suffix");
         this.mappingClasses = (Map<String, Class<?>>) context.getAttribute("mappingClasses");
         this.mappingMethodes = (Map<URLDetails, Method>) context.getAttribute("mappingMethodes");
+        this.sessions = (Map<String, MySession>) context.getAttribute("sessions");
     }
 
     @Override
@@ -284,31 +288,53 @@ public class VueServlet extends HttpServlet {
             List<Class<?>> listeClasses = (List<Class<?>>) context.getAttribute("listeClasses");
 
             Method m = trouverMethode(listeClasses, url);
-            m.setAccessible(true);
-            Class<?> clazz = m.getDeclaringClass();
-            System.out.println(clazz);
-
-            if (m != null && clazz != null) {
+            if (m != null) {
+                m.setAccessible(true);
+                Class<?> clazz = m.getDeclaringClass();
                 Object instance = clazz.getDeclaredConstructor().newInstance();
 
                 Parameter[] parameters = m.getParameters();
                 Object[] args = new Object[parameters.length];
+                MySession mySessionInstance = null;
 
                 for (int i = 0; i < parameters.length; i++) {
                     Parameter param = parameters[i];
-
                     Class<?> paramType = param.getType();
 
-                    if (isTypeSimple(paramType)) {
+                    if (paramType.equals(HttpSession.class)) {
+                        args[i] = req.getSession();
+                    }
+                    else if (paramType.equals(MySession.class)) {
+                        HttpSession httpSession = req.getSession();
+                        mySessionInstance = sessions.computeIfAbsent(
+                                httpSession.getId(), key -> new MySession());
+
+                        String sessionValue = req.getParameter("user");
+                        if (sessionValue != null) {
+                            mySessionInstance.add("user", sessionValue);
+                        }
+
+                        SessionUtil.copyToMySession(httpSession, mySessionInstance);
+                        args[i] = mySessionInstance;
+                    }
+                    else if (isTypeSimple(paramType)) {
                         String paramName = param.getName();
                         String paramValue = req.getParameter(paramName);
                         args[i] = convertirObjet(paramValue, paramType);
-                    } else {
+                    }
+                    else {
                         args[i] = remplirObjet(paramType, req);
                     }
                 }
 
                 Object result = m.invoke(instance, args);
+
+                if (mySessionInstance != null) {
+                    HttpSession httpSession = req.getSession();
+                    SessionUtil.copyToHttpSession(mySessionInstance, httpSession);
+                    sessions.put(httpSession.getId(), mySessionInstance);
+                }
+
                 if (result instanceof ModelAndView) {
                     ModelAndView mav = (ModelAndView) result;
                     String lien = this.prefix + mav.getView() + this.suffix;
@@ -374,7 +400,7 @@ public class VueServlet extends HttpServlet {
                         paramValue = part.getSubmittedFileName();
                         uploadFile(fieldName, req);
                     } else {
-                        paramValue= req.getParameter(fieldName);
+                        paramValue = req.getParameter(fieldName);
                     }
 
                     System.out.println("Field Name(" + compte + "): " + fieldName);
@@ -433,5 +459,4 @@ public class VueServlet extends HttpServlet {
             System.out.println(e.getMessage());
         }
     }
-
 }

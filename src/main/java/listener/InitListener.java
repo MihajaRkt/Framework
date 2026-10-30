@@ -6,6 +6,7 @@ import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
+import objet.MySession;
 import tools.URLDetails;
 import tools.Util;
 
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @WebListener
 public class InitListener implements ServletContextListener {
@@ -62,12 +64,15 @@ public class InitListener implements ServletContextListener {
             }
         }
 
+        Map<String, MySession> sessions = new ConcurrentHashMap<>();
+
         context.setAttribute("listeClasses", listeClasses);
         context.setAttribute("mappingClasses", mappingClasses);
         context.setAttribute("mappingMethodes", mappingMethodes);
 
         context.setAttribute("prefix", prefix);
         context.setAttribute("suffix", suffix);
+        context.setAttribute("sessions", sessions);
     }
 
     @Override
