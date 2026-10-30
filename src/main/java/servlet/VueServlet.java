@@ -160,6 +160,7 @@ public class VueServlet extends HttpServlet {
         dispat.forward(req, res);
 
     }
+
     private Method trouverMethode(List<Class<?>> listeClasses, String url) {
         if (listeClasses != null) {
             for (Class<?> clazz : listeClasses) {
@@ -177,6 +178,7 @@ public class VueServlet extends HttpServlet {
         }
         return null;
     }
+
     // Condition pour l'existence de l'annotation
     // Vrai (Printwriter pour JSON)
     // SI String, tonga de apetaka sinon manao toJSON
