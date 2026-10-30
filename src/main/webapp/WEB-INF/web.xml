@@ -12,8 +12,8 @@
     </listener>
 
     <servlet>
-        <servlet-name>VueServlet</servlet-name>
-        <servlet-class>servlet.VueServlet</servlet-class>
+        <servlet-name>FrontController</servlet-name>
+        <servlet-class>servlet.FrontController</servlet-class>
         <init-param>
             <param-name>scanController</param-name>
             <param-value>annotation;tools</param-value>
@@ -22,10 +22,14 @@
             <param-name>authentification</param-name>
             <param-value>auth</param-value>
         </init-param>
+        <init-param>
+            <param-name>role</param-name>
+            <param-value>role</param-value>
+        </init-param>
     </servlet>
 
     <servlet-mapping>
-        <servlet-name>VueServlet</servlet-name>
+        <servlet-name>FrontController</servlet-name>
         <url-pattern>/</url-pattern>
     </servlet-mapping>
 
